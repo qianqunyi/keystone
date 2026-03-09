@@ -16,6 +16,7 @@ import functools
 import http.client
 import re
 import typing as ty
+import urllib.parse
 import uuid
 import wsgiref.util
 
@@ -742,15 +743,16 @@ class ResourceBase(flask_restful.Resource):
             and list_limited
         ):
             args = flask.request.args.to_dict()
-            # Include URL path parameters (e.g. user_id) so that
-            # flask.url_for() can build URLs for sub-resource
-            # endpoints like /users/<user_id>/projects.
-            args.update(flask.request.view_args or {})
             # Update the marker with the ID of last entry
             args["marker"] = refs[-1]["id"]
             args["limit"] = hints.limit.get("limit", args.get("limit"))
-            container["links"]["next"] = base_url(
-                flask.url_for(flask.request.endpoint, **args)
+            # Use PATH_INFO (which never includes SCRIPT_NAME) to
+            # avoid duplicating any URL prefix that flask.url_for()
+            # would prepend (LP#2134871).
+            container["links"]["next"] = (
+                base_url(flask.request.environ['PATH_INFO'])
+                + '?'
+                + urllib.parse.urlencode(args)
             )
 
         if list_limited:

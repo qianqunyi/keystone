@@ -2074,6 +2074,46 @@ class ProjectPaginationTestCase(test_v3.PaginationTestCaseBase):
             response = self.post("/projects", body=res)
 
 
+class PaginationWithPrefixedEndpointTestCase(test_v3.RestfulTestCase):
+    """Test pagination links when public_endpoint has a path prefix.
+
+    Regression test for bug #2134871: when Keystone is deployed behind a
+    reverse proxy with a prefixed endpoint path (e.g.
+    ``http://host/identity``), the ``next`` pagination link duplicated the
+    path prefix, producing URLs like
+    ``http://host/identity/v3/identity/v3/projects?...``.
+    """
+
+    def _create_projects(self, count):
+        for _ in range(count):
+            res = {"project": unit.new_project_ref()}
+            self.post("/projects", body=res)
+
+    def test_next_link_with_prefixed_endpoint(self):
+        """``next`` link must not duplicate the endpoint path prefix."""
+        self.config_fixture.config(public_endpoint='http://localhost/identity')
+        self._create_projects(3)
+        token = self.get_scoped_token()
+        # Simulate a reverse-proxy deployment where SCRIPT_NAME is set
+        # to the path prefix (e.g. /identity).  This causes
+        # flask.url_for() to prepend the prefix to generated paths.
+        response = self.public_app.get(
+            '/v3/projects?limit=1',
+            headers={'X-Auth-Token': token},
+            extra_environ={'SCRIPT_NAME': '/identity'},
+        )
+        links = response.json["links"]
+
+        self.assertIsNotNone(links.get("next"))
+        # The next link must start with the prefixed base URL
+        self.assertThat(
+            links["next"],
+            matchers.StartsWith("http://localhost/identity/v3/projects?"),
+        )
+        # It must NOT contain the prefix twice
+        self.assertNotIn("/identity/v3/identity/", links["next"])
+
+
 class UserPaginationTestCase(test_v3.PaginationTestCaseBase):
     """Test user list pagination."""
 
