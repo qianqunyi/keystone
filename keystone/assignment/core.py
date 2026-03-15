@@ -93,14 +93,6 @@ class Manager(manager.Manager):
             for x in PROVIDERS.identity_api.list_groups_for_user(user_id)
         ]
 
-    def list_user_ids_for_project(self, project_id):
-        PROVIDERS.resource_api.get_project(project_id)
-        assignment_list = self.list_role_assignments(
-            project_id=project_id, effective=True
-        )
-        # Use set() to process the list to remove any duplicates
-        return list({x['user_id'] for x in assignment_list})
-
     def _send_app_cred_notification_for_role_removal(self, role_id):
         """Delete all application credential for a specific role.
 
