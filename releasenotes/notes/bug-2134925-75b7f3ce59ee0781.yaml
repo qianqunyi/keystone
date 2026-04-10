@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    [`bug 2134925 <https://bugs.launchpad.net/keystone/+bug/2134925>`_]
+    Fixed a crash (HTTP 500) when listing sub-resource endpoints with a
+    ``limit`` query parameter (e.g. ``GET /v3/users/{user_id}/projects?limit=1``).
+    The ``wrap_collection`` method now includes URL path parameters from
+    ``flask.request.view_args`` when building the ``next`` pagination link,
+    so that ``flask.url_for()`` can correctly resolve sub-resource routes.

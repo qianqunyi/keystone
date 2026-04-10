@@ -2104,3 +2104,118 @@ class GroupPaginationTestCase(test_v3.PaginationTestCaseBase):
                 )
             }
             response = self.post("/groups", body=res)
+
+
+class SubResourcePaginationTestCaseBase(test_v3.RestfulTestCase):
+    """Base test for sub-resource list endpoint pagination.
+
+    Regression test for bug #2134925: requesting a sub-resource list
+    with a limit parameter caused a 500 error because flask.url_for()
+    was missing URL path parameters (e.g. user_id) when building the
+    'next' pagination link in wrap_collection.
+    """
+
+    collection_key: str | None = None
+
+    def setUp(self):
+        super().setUp()
+        if not self.collection_key:
+            self.skipTest("Not testing the base")
+
+    def _get_url(self):
+        """Return the URL path (without /v3) for the sub-resource list."""
+        raise NotImplementedError
+
+    def _create_resources(self, count):
+        """Create the given number of sub-resources."""
+        raise NotImplementedError
+
+    def test_list_with_limit(self):
+        """Test that listing sub-resources with limit does not crash."""
+        self._create_resources(3)
+        url = self._get_url()
+        response = self.get(f"{url}?limit=1")
+        res_list = response.json_body[self.collection_key]
+        res_links = response.json_body["links"]
+        self.assertEqual(1, len(res_list))
+        self.assertIsNotNone(res_links.get("next"))
+        self.assertIn("limit=", res_links["next"])
+        self.assertIn("marker=", res_links["next"])
+
+    def test_follow_next_link(self):
+        """Test that following the next page link also works."""
+        self._create_resources(3)
+        url = self._get_url()
+        response = self.get(f"{url}?limit=1")
+        res_links = response.json_body["links"]
+        next_url = res_links.get("next")
+        self.assertIsNotNone(next_url)
+        # Follow the next link - should not crash
+        next_rel_url = next_url[next_url.find("/v3") + 3 :]
+        response = self.get(next_rel_url)
+        res_list = response.json_body[self.collection_key]
+        self.assertGreaterEqual(len(res_list), 0)
+
+
+class UserProjectSubResourcePaginationTestCase(
+    SubResourcePaginationTestCaseBase
+):
+    """Test pagination for GET /users/{user_id}/projects."""
+
+    collection_key = "projects"
+
+    def _get_url(self):
+        return f"/users/{self.user_id}/projects"
+
+    def _create_resources(self, count):
+        for _ in range(count):
+            project = unit.new_project_ref(domain_id=self.domain_id)
+            project = PROVIDERS.resource_api.create_project(
+                project['id'], project
+            )
+            PROVIDERS.assignment_api.add_role_to_user_and_project(
+                self.user_id, project['id'], self.role_id
+            )
+
+
+class UserGroupSubResourcePaginationTestCase(
+    SubResourcePaginationTestCaseBase
+):
+    """Test pagination for GET /users/{user_id}/groups."""
+
+    collection_key = "groups"
+
+    def _get_url(self):
+        return f"/users/{self.user_id}/groups"
+
+    def _create_resources(self, count):
+        for _ in range(count):
+            group = unit.new_group_ref(domain_id=self.domain_id)
+            group = PROVIDERS.identity_api.create_group(group)
+            PROVIDERS.identity_api.add_user_to_group(self.user_id, group['id'])
+
+
+class GroupUserSubResourcePaginationTestCase(
+    SubResourcePaginationTestCaseBase
+):
+    """Test pagination for GET /groups/{group_id}/users."""
+
+    collection_key = "users"
+
+    def setUp(self):
+        super().setUp()
+        self.test_group = unit.new_group_ref(domain_id=self.domain_id)
+        self.test_group = PROVIDERS.identity_api.create_group(self.test_group)
+        self.test_group_id = self.test_group['id']
+
+    def _get_url(self):
+        return f"/groups/{self.test_group_id}/users"
+
+    def _create_resources(self, count):
+        for _ in range(count):
+            user = unit.create_user(
+                PROVIDERS.identity_api, domain_id=self.domain_id
+            )
+            PROVIDERS.identity_api.add_user_to_group(
+                user['id'], self.test_group_id
+            )
