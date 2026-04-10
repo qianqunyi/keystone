@@ -16,7 +16,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: keystone VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2022-07-01 18:11+0000\n"
+"POT-Creation-Date: 2026-04-09 17:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -156,10 +156,6 @@ msgstr "无法列示源自若干组并按用户标识过滤的分配。"
 
 msgid "Cannot list request tokens with a token issued via delegation."
 msgstr "无法列示带有通过代理发出的令牌的请求令牌。"
-
-#, python-format
-msgid "Cannot remove role that has not been granted, %s"
-msgstr "无法除去尚未授予的角色 %s"
 
 msgid ""
 "Cannot truncate a driver call without hints list as first parameter after "
@@ -406,7 +402,7 @@ msgid ""
 "Length of transformable resource id > 64, which is max allowed characters"
 msgstr "可变换资源标识的长度超过 64 个字符（允许的最大字符数）。"
 
-#, python-format
+#, python-format, python-brace-format
 msgid ""
 "Local section in mapping %(mapping_id)s refers to a remote match that "
 "doesn't exist (e.g. {0} in a local section)."
