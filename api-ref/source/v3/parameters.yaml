@@ -1774,13 +1774,13 @@ request_explicit_domain_id_body_not_required:
   type: string
 request_limit_domain_id_not_required:
   description: |
-    The name of the domain.
+    The ID of the domain. Either this or the project ID must be supplied.
   in: body
   required: false
   type: string
 request_limit_project_id_not_required:
   description: |
-    The ID for the project.
+    The ID of the project. Either this or the domain ID must be supplied.
   in: body
   required: false
   type: string
