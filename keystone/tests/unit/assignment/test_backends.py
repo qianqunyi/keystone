@@ -477,9 +477,10 @@ class AssignmentTests(AssignmentTestHelperMixin):
         return domain
 
     def test_project_add_and_remove_user_role(self):
-        user_ids = PROVIDERS.assignment_api.list_user_ids_for_project(
-            self.project_bar['id']
+        assignments = PROVIDERS.assignment_api.list_role_assignments(
+            project_id=self.project_bar['id'], effective=True
         )
+        user_ids = list({x['user_id'] for x in assignments})
         self.assertNotIn(self.user_two['id'], user_ids)
 
         PROVIDERS.assignment_api.add_role_to_user_and_project(
@@ -487,9 +488,10 @@ class AssignmentTests(AssignmentTestHelperMixin):
             user_id=self.user_two['id'],
             role_id=self.role_other['id'],
         )
-        user_ids = PROVIDERS.assignment_api.list_user_ids_for_project(
-            self.project_bar['id']
+        assignments = PROVIDERS.assignment_api.list_role_assignments(
+            project_id=self.project_bar['id'], effective=True
         )
+        user_ids = list({x['user_id'] for x in assignments})
         self.assertIn(self.user_two['id'], user_ids)
 
         PROVIDERS.assignment_api.delete_grant(
@@ -498,9 +500,10 @@ class AssignmentTests(AssignmentTestHelperMixin):
             project_id=self.project_bar['id'],
         )
 
-        user_ids = PROVIDERS.assignment_api.list_user_ids_for_project(
-            self.project_bar['id']
+        assignments = PROVIDERS.assignment_api.list_role_assignments(
+            project_id=self.project_bar['id'], effective=True
         )
+        user_ids = list({x['user_id'] for x in assignments})
         self.assertNotIn(self.user_two['id'], user_ids)
 
     def test_remove_user_role_not_assigned(self):
@@ -512,46 +515,6 @@ class AssignmentTests(AssignmentTestHelperMixin):
             self.role_other['id'],
             user_id=self.user_two['id'],
             project_id=self.project_bar['id'],
-        )
-
-    def test_list_user_ids_for_project(self):
-        user_ids = PROVIDERS.assignment_api.list_user_ids_for_project(
-            self.project_baz['id']
-        )
-        self.assertEqual(2, len(user_ids))
-        self.assertIn(self.user_two['id'], user_ids)
-        self.assertIn(self.user_badguy['id'], user_ids)
-
-    def test_list_user_ids_for_project_no_duplicates(self):
-        # Create user
-        user_ref = unit.new_user_ref(domain_id=CONF.identity.default_domain_id)
-        user_ref = PROVIDERS.identity_api.create_user(user_ref)
-        # Create project
-        project_ref = unit.new_project_ref(
-            domain_id=CONF.identity.default_domain_id
-        )
-        PROVIDERS.resource_api.create_project(project_ref['id'], project_ref)
-        # Create 2 roles and give user each role in project
-        for i in range(2):
-            role_ref = unit.new_role_ref()
-            PROVIDERS.role_api.create_role(role_ref['id'], role_ref)
-            PROVIDERS.assignment_api.add_role_to_user_and_project(
-                user_id=user_ref['id'],
-                project_id=project_ref['id'],
-                role_id=role_ref['id'],
-            )
-        # Get the list of user_ids in project
-        user_ids = PROVIDERS.assignment_api.list_user_ids_for_project(
-            project_ref['id']
-        )
-        # Ensure the user is only returned once
-        self.assertEqual(1, len(user_ids))
-
-    def test_get_project_user_ids_returns_not_found(self):
-        self.assertRaises(
-            exception.ProjectNotFound,
-            PROVIDERS.assignment_api.list_user_ids_for_project,
-            uuid.uuid4().hex,
         )
 
     def test_list_role_assignments_unfiltered(self):
@@ -2200,7 +2163,7 @@ class AssignmentTests(AssignmentTestHelperMixin):
         PROVIDERS.resource_api.delete_project(project['id'])
         self.assertRaises(
             exception.ProjectNotFound,
-            PROVIDERS.assignment_api.list_user_ids_for_project,
+            PROVIDERS.resource_api.get_project,
             project['id'],
         )
 
@@ -4301,9 +4264,10 @@ class InheritanceTests(AssignmentTestHelperMixin):
         # Use assignment plan helper to create all the entities and
         # assignments - then we'll run our own tests using the data
         test_data = self.execute_assignment_plan(test_plan)
-        user_ids = PROVIDERS.assignment_api.list_user_ids_for_project(
-            test_data['projects'][1]['id']
+        assignments = PROVIDERS.assignment_api.list_role_assignments(
+            project_id=test_data['projects'][1]['id'], effective=True
         )
+        user_ids = list({x['user_id'] for x in assignments})
         self.assertThat(user_ids, matchers.HasLength(4))
         for x in range(0, 4):
             self.assertIn(test_data['users'][x]['id'], user_ids)
