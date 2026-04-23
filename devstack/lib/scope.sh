@@ -20,5 +20,5 @@ function configure_enforce_scope {
 }
 
 function configure_protection_tests {
-    iniset $TEMPEST_CONFIG identity-feature-enabled enforce_scope true
+    iniset $TEMPEST_CONFIG enforce_scope keystone true
 }
